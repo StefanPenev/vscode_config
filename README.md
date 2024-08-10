@@ -1,4 +1,5 @@
-"""
+### Visual Studio Code Configuration Script
+
 This Python script generates configuration files for debugging multi-file C projects in Visual Studio Code.
 
 The script creates two configuration files:
