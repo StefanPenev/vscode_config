@@ -23,3 +23,7 @@ The script creates two configuration files:
    * Trigger the build task, compiling the project using the make command.
    * Start the debugger, prompting you to enter any required command-line arguments.
    * Begin the debugging session, where you can use breakpoints to inspect the code's execution.
+
+### Note
+
+This script has been tested and confirmed to work on both macOS and Linux environments. Ensure that your system has the necessary development tools installed, such as make, a C compiler (e.g., gcc), and Python 3. While the script is designed to generate Visual Studio Code configuration files, it may require additional adjustments if you're using a different operating system.
