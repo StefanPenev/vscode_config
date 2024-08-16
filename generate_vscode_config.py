@@ -1,5 +1,6 @@
 import os
 import json
+import platform
 
 def create_tasks_json(subfolder=""):
     tasks = {
@@ -9,49 +10,47 @@ def create_tasks_json(subfolder=""):
                 "label": "build",
                 "type": "shell",
                 "command": "make",
-                "options": {
-                    "cwd": f"${{workspaceFolder}}/{subfolder}".rstrip('/')
-                },
                 "group": {
                     "kind": "build",
                     "isDefault": True
                 },
-                "problemMatcher": "$gcc"
+                "problemMatcher": "$gcc",
+                "options": {
+                    "cwd": os.path.join("${workspaceFolder}", subfolder)
+                }
             }
         ]
     }
-    
-    os.makedirs(".vscode", exist_ok=True)
-    with open(".vscode/tasks.json", "w") as f:
-        json.dump(tasks, f, indent=4)
+    return tasks
 
 def create_launch_json(subfolder="", program_name=None, include_program=True):
-    launch = {
-        "version": "0.2.0",
-        "configurations": [
+    # Determine the debugger mode (gdb for Linux, lldb for macOS)
+    debugger = "gdb" if platform.system() == "Linux" else "lldb"
+    
+    configurations = {
+        "name": f"({debugger}) Launch",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": os.path.join("${workspaceFolder}", subfolder, program_name) if include_program and program_name else "${workspaceFolder}/<your_program_name>",
+        "args": ["${input:programArgs}"],
+        "stopAtEntry": False,
+        "cwd": os.path.join("${workspaceFolder}", subfolder),
+        "environment": [],
+        "externalConsole": False,
+        "MIMode": debugger,
+        "setupCommands": [
             {
-                "name": "(gdb) Launch",
-                "type": "cppdbg",
-                "request": "launch",
-                "program": f"${{workspaceFolder}}/{subfolder}/{program_name}".rstrip('/') if include_program else "",
-                "args": [
-                    "${input:programArgs}"
-                ],
-                "stopAtEntry": False,
-                "cwd": f"${{workspaceFolder}}/{subfolder}".rstrip('/'),
-                "environment": [],
-                "externalConsole": False,
-                "MIMode": "gdb",
-                "setupCommands": [
-                    {
-                        "description": "Enable pretty-printing for gdb",
-                        "text": "-enable-pretty-printing",
-                        "ignoreFailures": True
-                    }
-                ],
-                "preLaunchTask": "build" if include_program else ""
+                "description": "Enable pretty-printing for lldb" if debugger == "lldb" else "Enable pretty-printing for gdb",
+                "text": "settings set target.auto-var-init true" if debugger == "lldb" else "-enable-pretty-printing",
+                "ignoreFailures": True
             }
         ],
+        "preLaunchTask": "build"
+    }
+
+    launch = {
+        "version": "0.2.0",
+        "configurations": [configurations],
         "inputs": [
             {
                 "id": "programArgs",
@@ -61,19 +60,30 @@ def create_launch_json(subfolder="", program_name=None, include_program=True):
             }
         ]
     }
-    
-    with open(".vscode/launch.json", "w") as f:
-        json.dump(launch, f, indent=4)
+    return launch
+
+def write_json_file(directory, filename, content):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    filepath = os.path.join(directory, filename)
+    with open(filepath, "w") as f:
+        json.dump(content, f, indent=4)
 
 def main():
-    subfolder = input("Enter the subfolder containing Makefile (relative to workspace, leave empty if in root): ").strip()
-    include_program = input("Include program name in launch configuration? (y/n): ").strip().lower() == 'y'
-    program_name = input("Enter the output binary name (e.g., test): ").strip() if include_program else ""
-    
-    create_tasks_json(subfolder=subfolder)
-    create_launch_json(subfolder=subfolder, program_name=program_name, include_program=include_program)
+    subfolder = input("Enter the subfolder for your project (leave blank if none): ").strip()
+    include_program = input("Do you want to include the program name in the launch.json? (yes/no): ").strip().lower() == "yes"
+    program_name = None
+    if include_program:
+        program_name = input("Enter the name of your program (e.g., 'push_swap'): ").strip()
 
-    print("VS Code configuration files generated successfully!")
+    tasks_json = create_tasks_json(subfolder)
+    launch_json = create_launch_json(subfolder, program_name, include_program)
+
+    vscode_dir = os.path.join(".vscode")
+    write_json_file(vscode_dir, "tasks.json", tasks_json)
+    write_json_file(vscode_dir, "launch.json", launch_json)
+
+    print(f"Configuration files have been generated in the {vscode_dir} directory.")
 
 if __name__ == "__main__":
     main()
